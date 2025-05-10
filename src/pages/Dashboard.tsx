@@ -15,7 +15,8 @@ const Dashboard: React.FC = () => {
     isLoading, 
     storageAnalysis, 
     performQuickCleanup,
-    refreshStorage
+    refreshStorage,
+    isNativeDevice
   } = useStorage();
 
   // Calculate the storage percentage used
@@ -37,7 +38,7 @@ const Dashboard: React.FC = () => {
 
   const handleScheduleScan = () => {
     // In a real app, this would schedule a background scan
-    // For now, just show a toast
+    // For now, just refresh the storage
     refreshStorage();
   };
 
@@ -47,6 +48,11 @@ const Dashboard: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold">SpaceScout</h1>
           <p className="text-sm text-gray-500">Free up your device storage</p>
+          {isNativeDevice && (
+            <p className="text-xs text-green-500 font-medium mt-1">
+              ● Connected to real device
+            </p>
+          )}
         </div>
         <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse-light"></div>
       </div>

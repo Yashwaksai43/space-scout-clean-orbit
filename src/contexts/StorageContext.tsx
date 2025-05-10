@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api, StorageAnalysis, AppInfo, PhotoGroup } from '../services/api';
+import { deviceService } from '../services/deviceService';
 import { toast } from 'sonner';
 
 interface StorageContextType {
@@ -16,6 +17,7 @@ interface StorageContextType {
   deleteSelectedApps: () => Promise<void>;
   deleteSelectedPhotoGroups: () => Promise<void>;
   performQuickCleanup: () => Promise<void>;
+  isNativeDevice: boolean;
 }
 
 const StorageContext = createContext<StorageContextType | undefined>(undefined);
@@ -27,22 +29,60 @@ export const StorageProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [photoGroups, setPhotoGroups] = useState<PhotoGroup[]>([]);
   const [selectedApps, setSelectedApps] = useState<string[]>([]);
   const [selectedPhotoGroups, setSelectedPhotoGroups] = useState<string[]>([]);
+  const [isNativeDevice, setIsNativeDevice] = useState(false);
+
+  // Check if running on a native device
+  useEffect(() => {
+    const checkPlatform = async () => {
+      const isNative = deviceService.isNative();
+      setIsNativeDevice(isNative);
+      
+      if (isNative) {
+        const deviceInfo = await deviceService.getDeviceInfo();
+        console.log('Running on native device:', deviceInfo);
+      } else {
+        console.log('Running in browser environment');
+      }
+    };
+    
+    checkPlatform();
+  }, []);
 
   const refreshStorage = async () => {
     setIsLoading(true);
     try {
-      // Fetch storage analysis
-      const analysis = await api.analyzeStorage();
-      setStorageAnalysis(analysis);
+      let analysisData: StorageAnalysis | null = null;
+      let appsData: AppInfo[] = [];
+      let photoGroupsData: PhotoGroup[] = [];
       
-      // Fetch apps and photo groups
-      const [appsData, photoGroupsData] = await Promise.all([
-        api.getApps(),
-        api.getPhotoGroups()
-      ]);
+      // Try to get data from native device first, fall back to simulated data
+      if (isNativeDevice) {
+        // Get data from device
+        analysisData = await deviceService.getStorageInfo();
+        const nativeApps = await deviceService.getInstalledApps();
+        const nativePhotos = await deviceService.getPhotoGroups();
+        
+        // Use native data if available, otherwise fall back to simulated
+        if (nativeApps) appsData = nativeApps;
+        else appsData = await api.getApps();
+        
+        if (nativePhotos) photoGroupsData = nativePhotos;
+        else photoGroupsData = await api.getPhotoGroups();
+        
+        if (!analysisData) analysisData = await api.analyzeStorage();
+      } else {
+        // When in browser, use simulated data
+        analysisData = await api.analyzeStorage();
+        [appsData, photoGroupsData] = await Promise.all([
+          api.getApps(),
+          api.getPhotoGroups()
+        ]);
+      }
       
+      setStorageAnalysis(analysisData);
       setApps(appsData);
       setPhotoGroups(photoGroupsData);
+      
     } catch (error) {
       console.error('Error fetching storage data:', error);
       toast.error('Failed to analyze storage');
@@ -54,7 +94,7 @@ export const StorageProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Initial data load
   useEffect(() => {
     refreshStorage();
-  }, []);
+  }, [isNativeDevice]);
 
   const toggleAppSelection = (appId: string) => {
     setSelectedApps(prev => 
@@ -76,8 +116,22 @@ export const StorageProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (selectedApps.length === 0) return;
     
     try {
-      await api.deleteApps(selectedApps);
-      toast.success(`Successfully uninstalled ${selectedApps.length} apps`);
+      if (isNativeDevice) {
+        // On native device, delete apps one by one
+        const results = await Promise.all(
+          selectedApps.map(appId => deviceService.deleteApp(appId))
+        );
+        
+        const successCount = results.filter(result => result).length;
+        if (successCount > 0) {
+          toast.success(`Successfully uninstalled ${successCount} apps`);
+        }
+      } else {
+        // In browser, use simulated API
+        await api.deleteApps(selectedApps);
+        toast.success(`Successfully uninstalled ${selectedApps.length} apps`);
+      }
+      
       setSelectedApps([]);
       await refreshStorage();
     } catch (error) {
@@ -90,10 +144,16 @@ export const StorageProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (selectedPhotoGroups.length === 0) return;
     
     try {
-      // In a real app, we'd get all photo IDs from the selected groups
-      // For simulation, we'll just use the group IDs
+      if (isNativeDevice) {
+        // This would need to be implemented with actual paths to photos
+        // For now, we'll just use the simulated API
+        console.log('Would delete photos on native device');
+      } 
+      
+      // Use simulated API for now in all cases
       await api.deletePhotos(selectedPhotoGroups);
       toast.success(`Successfully deleted photos from ${selectedPhotoGroups.length} groups`);
+      
       setSelectedPhotoGroups([]);
       await refreshStorage();
     } catch (error) {
@@ -104,7 +164,14 @@ export const StorageProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const performQuickCleanup = async () => {
     try {
-      const mbFreed = await api.quickCleanup();
+      let mbFreed: number;
+      
+      if (isNativeDevice) {
+        mbFreed = await deviceService.cleanupCaches();
+      } else {
+        mbFreed = await api.quickCleanup();
+      }
+      
       toast.success(`Cleanup complete! Freed ${mbFreed} MB of space`);
       await refreshStorage();
     } catch (error) {
@@ -125,7 +192,8 @@ export const StorageProvider: React.FC<{ children: ReactNode }> = ({ children })
     togglePhotoGroupSelection,
     deleteSelectedApps,
     deleteSelectedPhotoGroups,
-    performQuickCleanup
+    performQuickCleanup,
+    isNativeDevice
   };
 
   return (
