@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { ZapFast, Smartphone, Image, FileText, ArrowRight, Filter } from 'lucide-react';
+import { Zap, Smartphone, Image, FileText, ArrowRight, Filter } from 'lucide-react';
 import StorageProgressRing from '@/components/ui/StorageProgressRing';
 import StorageSegmentedBar, { StorageSegment } from '@/components/ui/StorageSegmentedBar';
 import StorageCard from '@/components/ui/StorageCard';
@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
           <ActionCard
             title="One-Tap Cleanup"
             description="Quickly scan and remove junk files, caches, and unused apps."
-            icon={<ZapFast size={24} />}
+            icon={<Zap size={24} />}
             buttonText="Clean Now"
             onClick={handleCleanup}
             accentColor="bg-secondary hover:bg-secondary/90"
