@@ -1,86 +1,44 @@
 
-import React, { useEffect, useState } from 'react';
-import { Search, Smartphone, Filter, ArrowDown, CheckCircle } from 'lucide-react';
-
-interface AppItem {
-  id: string;
-  name: string;
-  icon: string;
-  size: string;
-  lastUsed: string;
-  days: number;
-}
+import React from 'react';
+import { Search, Filter, ArrowDown, CheckCircle } from 'lucide-react';
+import { useStorage } from '@/contexts/StorageContext';
+import { formatDistanceToNow } from 'date-fns';
 
 const AppsAnalysis: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [apps, setApps] = useState<AppItem[]>([]);
-  const [selectedApps, setSelectedApps] = useState<string[]>([]);
+  const { 
+    isLoading,
+    apps,
+    selectedApps,
+    toggleAppSelection,
+    deleteSelectedApps
+  } = useStorage();
 
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      setApps([
-        {
-          id: '1',
-          name: 'Social App',
-          icon: '📱',
-          size: '245 MB',
-          lastUsed: 'Never used',
-          days: 120
-        },
-        {
-          id: '2',
-          name: 'Game Center',
-          icon: '🎮',
-          size: '1.2 GB',
-          lastUsed: '3 months ago',
-          days: 90
-        },
-        {
-          id: '3',
-          name: 'Weather App',
-          icon: '☀️',
-          size: '156 MB',
-          lastUsed: '2 months ago',
-          days: 60
-        },
-        {
-          id: '4',
-          name: 'Fitness Tracker',
-          icon: '🏃',
-          size: '320 MB',
-          lastUsed: '4 months ago',
-          days: 120
-        },
-        {
-          id: '5',
-          name: 'Note Taking',
-          icon: '📝',
-          size: '78 MB',
-          lastUsed: '3 months ago',
-          days: 90
-        },
-        {
-          id: '6',
-          name: 'Music Player',
-          icon: '🎵',
-          size: '245 MB',
-          lastUsed: '6 months ago',
-          days: 180
-        },
-      ]);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const toggleAppSelection = (id: string) => {
-    setSelectedApps(prev => 
-      prev.includes(id) 
-        ? prev.filter(appId => appId !== id) 
-        : [...prev, id]
-    );
+  // Function to format the "last used" date
+  const formatLastUsed = (date: Date | null): string => {
+    if (!date) return 'Never used';
+    return formatDistanceToNow(date, { addSuffix: true });
   };
+
+  // Function to format file size
+  const formatFileSize = (bytes: number): string => {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = bytes;
+    let unitIndex = 0;
+    
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    
+    return `${size.toFixed(unitIndex > 0 ? 1 : 0)} ${units[unitIndex]}`;
+  };
+
+  // Calculate total stats
+  const totalApps = apps.length;
+  const unusedApps = apps.filter(app => 
+    app.lastUsed && (new Date().getTime() - app.lastUsed.getTime() > 90 * 24 * 60 * 60 * 1000)
+  ).length;
+  const totalSize = apps.reduce((sum, app) => sum + app.size, 0);
 
   return (
     <div className="p-5">
@@ -109,15 +67,15 @@ const AppsAnalysis: React.FC = () => {
         <div className="flex justify-between">
           <div>
             <h3 className="text-sm font-medium text-gray-500">Total Apps</h3>
-            <p className="text-2xl font-bold">42</p>
+            <p className="text-2xl font-bold">{totalApps}</p>
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Unused Apps</h3>
-            <p className="text-2xl font-bold text-primary">15</p>
+            <p className="text-2xl font-bold text-primary">{unusedApps}</p>
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Space Used</h3>
-            <p className="text-2xl font-bold">32.5 GB</p>
+            <p className="text-2xl font-bold">{formatFileSize(totalSize)}</p>
           </div>
         </div>
       </div>
@@ -149,10 +107,10 @@ const AppsAnalysis: React.FC = () => {
                 <div className="flex-1">
                   <div className="flex justify-between">
                     <h3 className="font-medium">{app.name}</h3>
-                    <span className="text-sm font-medium">{app.size}</span>
+                    <span className="text-sm font-medium">{formatFileSize(app.size)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-xs text-gray-500">{app.lastUsed}</span>
+                    <span className="text-xs text-gray-500">{formatLastUsed(app.lastUsed)}</span>
                     {selectedApps.includes(app.id) && (
                       <CheckCircle size={16} className="text-primary" />
                     )}
@@ -171,7 +129,10 @@ const AppsAnalysis: React.FC = () => {
             <button className="button-3d bg-gray-200 text-gray-700 py-2 px-4 rounded-lg flex-1 mr-2">
               Archive {selectedApps.length} Apps
             </button>
-            <button className="button-3d bg-primary text-white py-2 px-4 rounded-lg flex-1">
+            <button 
+              className="button-3d bg-primary text-white py-2 px-4 rounded-lg flex-1"
+              onClick={deleteSelectedApps}
+            >
               Uninstall {selectedApps.length} Apps
             </button>
           </div>

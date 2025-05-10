@@ -12,6 +12,7 @@ import AppsAnalysis from "./pages/AppsAnalysis";
 import PhotosAnalysis from "./pages/PhotosAnalysis";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import { StorageProvider } from "./contexts/StorageContext";
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -19,18 +20,20 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
-          <Route path="/apps" element={<AppLayout><AppsAnalysis /></AppLayout>} />
-          <Route path="/photos" element={<AppLayout><PhotosAnalysis /></AppLayout>} />
-          <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <StorageProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+            <Route path="/apps" element={<AppLayout><AppsAnalysis /></AppLayout>} />
+            <Route path="/photos" element={<AppLayout><PhotosAnalysis /></AppLayout>} />
+            <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </StorageProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -1,65 +1,35 @@
 
-import React, { useEffect, useState } from 'react';
-import { Search, Filter, Image, CheckCircle, Trash } from 'lucide-react';
-
-interface PhotoGroup {
-  id: string;
-  title: string;
-  count: number;
-  thumbnailUrl: string;
-  size: string;
-}
+import React from 'react';
+import { Search, Filter, CheckCircle, Trash } from 'lucide-react';
+import { useStorage } from '@/contexts/StorageContext';
 
 const PhotosAnalysis: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [photoGroups, setPhotoGroups] = useState<PhotoGroup[]>([]);
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const {
+    isLoading,
+    photoGroups,
+    selectedPhotoGroups,
+    togglePhotoGroupSelection,
+    deleteSelectedPhotoGroups
+  } = useStorage();
 
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      setPhotoGroups([
-        {
-          id: '1',
-          title: 'Similar Selfies',
-          count: 24,
-          thumbnailUrl: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158',
-          size: '245 MB'
-        },
-        {
-          id: '2',
-          title: 'Screenshots',
-          count: 56,
-          thumbnailUrl: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b',
-          size: '120 MB'
-        },
-        {
-          id: '3',
-          title: 'Blurry Photos',
-          count: 18,
-          thumbnailUrl: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1',
-          size: '86 MB'
-        },
-        {
-          id: '4',
-          title: 'Downloaded Images',
-          count: 42,
-          thumbnailUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475',
-          size: '190 MB'
-        },
-      ]);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const toggleGroupSelection = (id: string) => {
-    setSelectedGroups(prev => 
-      prev.includes(id) 
-        ? prev.filter(groupId => groupId !== id) 
-        : [...prev, id]
-    );
+  // Function to format file size
+  const formatFileSize = (bytes: number): string => {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = bytes;
+    let unitIndex = 0;
+    
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    
+    return `${size.toFixed(unitIndex > 0 ? 1 : 0)} ${units[unitIndex]}`;
   };
+
+  // Calculate totals
+  const totalPhotos = photoGroups.reduce((sum, group) => sum + group.count, 0);
+  const duplicatePhotos = totalPhotos;
+  const totalSize = photoGroups.reduce((sum, group) => sum + group.totalSize, 0);
 
   return (
     <div className="p-5">
@@ -88,15 +58,15 @@ const PhotosAnalysis: React.FC = () => {
         <div className="flex justify-between">
           <div>
             <h3 className="text-sm font-medium text-gray-500">Total Photos</h3>
-            <p className="text-2xl font-bold">1,248</p>
+            <p className="text-2xl font-bold">{totalPhotos}</p>
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Duplicates</h3>
-            <p className="text-2xl font-bold text-primary">127</p>
+            <p className="text-2xl font-bold text-primary">{duplicatePhotos}</p>
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Space Used</h3>
-            <p className="text-2xl font-bold">18.2 GB</p>
+            <p className="text-2xl font-bold">{formatFileSize(totalSize)}</p>
           </div>
         </div>
       </div>
@@ -117,20 +87,20 @@ const PhotosAnalysis: React.FC = () => {
             <div
               key={group.id}
               className={`card-3d overflow-hidden ${
-                selectedGroups.includes(group.id) ? 'border-2 border-primary' : ''
+                selectedPhotoGroups.includes(group.id) ? 'border-2 border-primary' : ''
               }`}
-              onClick={() => toggleGroupSelection(group.id)}
+              onClick={() => togglePhotoGroupSelection(group.id)}
             >
               <div className="relative h-32 bg-gray-200">
                 <img
                   src={group.thumbnailUrl}
-                  alt={group.title}
+                  alt={group.name}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-2 right-2 bg-black/60 text-white text-xs py-1 px-2 rounded-full">
                   {group.count} items
                 </div>
-                {selectedGroups.includes(group.id) && (
+                {selectedPhotoGroups.includes(group.id) && (
                   <div className="absolute top-2 left-2">
                     <CheckCircle size={20} className="text-primary bg-white rounded-full" />
                   </div>
@@ -138,8 +108,8 @@ const PhotosAnalysis: React.FC = () => {
               </div>
               <div className="p-3">
                 <div className="flex justify-between items-center">
-                  <h3 className="font-medium text-sm">{group.title}</h3>
-                  <span className="text-xs">{group.size}</span>
+                  <h3 className="font-medium text-sm">{group.name}</h3>
+                  <span className="text-xs">{formatFileSize(group.totalSize)}</span>
                 </div>
               </div>
             </div>
@@ -148,13 +118,16 @@ const PhotosAnalysis: React.FC = () => {
       )}
 
       {/* Action Buttons */}
-      {selectedGroups.length > 0 && (
+      {selectedPhotoGroups.length > 0 && (
         <div className="fixed bottom-24 left-0 right-0 p-4 bg-white shadow-lg border-t border-gray-200 animate-slide-up">
           <div className="max-w-md mx-auto flex">
             <button className="button-3d bg-gray-200 text-gray-700 py-2 px-4 rounded-lg flex-1 mr-2">
               View Selected
             </button>
-            <button className="button-3d bg-primary text-white py-2 px-4 rounded-lg flex-1 flex items-center justify-center">
+            <button 
+              className="button-3d bg-primary text-white py-2 px-4 rounded-lg flex-1 flex items-center justify-center"
+              onClick={deleteSelectedPhotoGroups}
+            >
               <Trash size={18} className="mr-2" />
               Delete Selected
             </button>

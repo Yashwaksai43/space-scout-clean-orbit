@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Zap, Smartphone, Image, FileText, ArrowRight, Filter } from 'lucide-react';
 import StorageProgressRing from '@/components/ui/StorageProgressRing';
 import StorageSegmentedBar, { StorageSegment } from '@/components/ui/StorageSegmentedBar';
@@ -7,35 +7,38 @@ import StorageCard from '@/components/ui/StorageCard';
 import ActionCard from '@/components/ui/ActionCard';
 import InsightCard from '@/components/ui/InsightCard';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useStorage } from '@/contexts/StorageContext';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [storageUsed, setStorageUsed] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const { 
+    isLoading, 
+    storageAnalysis, 
+    performQuickCleanup,
+    refreshStorage
+  } = useStorage();
 
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      setStorageUsed(68);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+  // Calculate the storage percentage used
+  const storageUsed = storageAnalysis 
+    ? Math.round((storageAnalysis.usedStorage / storageAnalysis.totalStorage) * 100) 
+    : 0;
 
-  const storageSegments: StorageSegment[] = [
-    { name: 'Apps', percentage: 42, color: '#2563EB' },
-    { name: 'Photos', percentage: 28, color: '#10B981' },
-    { name: 'Media', percentage: 15, color: '#F97316' },
-    { name: 'Other', percentage: 15, color: '#94A3B8' }
-  ];
+  // Create storage segments for the segmented bar
+  const storageSegments: StorageSegment[] = storageAnalysis ? [
+    { name: 'Apps', percentage: Math.round((storageAnalysis.segments.apps / storageAnalysis.usedStorage) * 100), color: '#2563EB' },
+    { name: 'Photos', percentage: Math.round((storageAnalysis.segments.photos / storageAnalysis.usedStorage) * 100), color: '#10B981' },
+    { name: 'Media', percentage: Math.round((storageAnalysis.segments.media / storageAnalysis.usedStorage) * 100), color: '#F97316' },
+    { name: 'Other', percentage: Math.round((storageAnalysis.segments.other / storageAnalysis.usedStorage) * 100), color: '#94A3B8' }
+  ] : [];
 
   const handleCleanup = () => {
-    toast.success('Starting quick cleanup scan');
+    performQuickCleanup();
   };
 
   const handleScheduleScan = () => {
-    toast.success('Scan scheduled for tonight');
+    // In a real app, this would schedule a background scan
+    // For now, just show a toast
+    refreshStorage();
   };
 
   return (
@@ -65,7 +68,7 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="mt-4 w-full bg-blue-50 p-3 rounded-lg text-center">
                 <span className="text-sm font-medium">
-                  {128 - Math.round(128 * storageUsed / 100)} GB free of 128 GB
+                  {storageAnalysis ? `${storageAnalysis.freeStorage} GB free of ${storageAnalysis.totalStorage} GB` : 'No storage data'}
                 </span>
               </div>
             </div>
@@ -75,25 +78,25 @@ const Dashboard: React.FC = () => {
           <div className="grid grid-cols-2 gap-3 mb-6">
             <StorageCard
               title="Apps"
-              value="32.5 GB"
+              value={`${storageAnalysis?.segments.apps.toFixed(1)} GB`}
               icon={<Smartphone size={20} />}
               color="bg-primary"
             />
             <StorageCard
               title="Photos"
-              value="18.2 GB"
+              value={`${storageAnalysis?.segments.photos.toFixed(1)} GB`}
               icon={<Image size={20} />}
               color="bg-secondary"
             />
             <StorageCard
               title="Media"
-              value="9.8 GB"
+              value={`${storageAnalysis?.segments.media.toFixed(1)} GB`}
               icon={<FileText size={20} />}
               color="bg-accent"
             />
             <StorageCard
               title="Other"
-              value="7.5 GB"
+              value={`${storageAnalysis?.segments.other.toFixed(1)} GB`}
               icon={<Filter size={20} />}
               color="bg-gray-500"
             />
