@@ -12,6 +12,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import AppsAnalysis from "./pages/AppsAnalysis";
 import PhotosAnalysis from "./pages/PhotosAnalysis";
+import AICleanup from "./pages/AICleanup";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { StorageProvider } from "./contexts/StorageContext";
@@ -38,6 +39,7 @@ const App = () => {
               <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
               <Route path="/apps" element={<AppLayout><AppsAnalysis /></AppLayout>} />
               <Route path="/photos" element={<AppLayout><PhotosAnalysis /></AppLayout>} />
+              <Route path="/ai-cleanup" element={<AppLayout><AICleanup /></AppLayout>} />
               <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
